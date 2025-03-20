@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go & Docker with Kubernetes</title>
+  <link href="/static/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-lg shadow-lg text-center w-96">
+    <h1 class="text-3xl font-bold text-blue-600">Welcome to Go + Docker + Kubernetes!</h1>
+    <p class="text-gray-700 mt-4">Enter your details below:</p>
+    <form id="submissionForm" class="mt-4">
+      <input type="text" name="name" id="name" placeholder="Your Name" class="border p-2 rounded w-full mb-2">
+      <textarea name="message" id="message" placeholder="Your Message" class="border p-2 rounded w-full mb-2"></textarea>
+      <button type="submit" class="bg-blue-600 text-white p-2 rounded w-full">Submit</button>
+    </form>
+    <div id="result" class="mt-4 text-green-600 font-semibold"></div>
+    <h2 class="text-2xl font-bold text-gray-800 mt-6">Bulletin Board</h2>
+    <div id="bulletinBoard" class="mt-4 space-y-4 text-left"></div>
+  </div>
+  <script>
+    const backendURL = '{{.BackendURL}}';
+    
+    async function fetchSubmissions() {
+      try {
+        const response = await fetch(backendURL + '/submissions');
+        const submissions = await response.json();
+        const bulletinBoard = document.getElementById('bulletinBoard');
+        bulletinBoard.innerHTML = submissions.map(sub => 
+          `<div class='p-4 border rounded shadow'>
+            <strong>${sub.name}</strong>: ${sub.message}
+          </div>`).join('');
+      } catch (error) {
+        console.error('Error fetching submissions:', error);
+      }
+    }
+    
+    document.getElementById('submissionForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const message = document.getElementById('message').value;
+      try {
+        const response = await fetch(backendURL + '/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({name, message})
+        });
+        const result = await response.json();
+        document.getElementById('result').innerText = result.status;
+        document.getElementById('submissionForm').reset();
+        fetchSubmissions();
+      } catch (error) {
+        console.error('Submission error:', error);
+        document.getElementById('result').innerText = 'Submission failed.';
+      }
+    });
+    
+    // Load existing submissions when the page loads
+    fetchSubmissions();
+  </script>
+</body>
+</html>

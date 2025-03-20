@@ -13,5 +13,6 @@ WORKDIR /root/
 # Copy the compiled binary and the static folder
 COPY --from=builder /app/go-frontend-app .
 COPY --from=builder /app/static /root/static
+COPY --from=builder /app/templates /root/templates
 EXPOSE 9090
 CMD ["./go-frontend-app"]

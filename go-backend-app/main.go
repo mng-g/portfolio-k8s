@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,20 @@ import (
 
 	_ "github.com/lib/pq"
 )
+
+// Submission represents a user submission.
+type Submission struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Message string `json:"message"`
+}
+
+// enableCORS adds the necessary CORS headers.
+func enableCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins; restrict as needed.
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+}
 
 func main() {
 	// Read database configuration from environment variables
@@ -51,7 +66,7 @@ func main() {
 		log.Fatalf("Unable to reach the database: %v", err)
 	}
 
-	// Create the table if it doesn't exist
+	// Create the submissions table if it doesn't exist.
 	createTableSQL := `
 	CREATE TABLE IF NOT EXISTS submissions (
 		id SERIAL PRIMARY KEY,
@@ -62,8 +77,20 @@ func main() {
 		log.Fatalf("Error creating table: %v", err)
 	}
 
-	// Handle form submissions
+	// Handle preflight requests for CORS
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		// This is just a dummy endpoint to confirm the server is running.
+		w.Write([]byte("Backend is running"))
+	})
+
+	// Endpoint to handle new submissions
 	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		// Handle OPTIONS method for preflight requests
+		if r.Method == http.MethodOptions {
+			return
+		}
 		if r.Method != http.MethodPost {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
@@ -88,10 +115,42 @@ func main() {
 			return
 		}
 
-		w.Write([]byte("Submission successful!"))
+		// Return a JSON response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "Submission successful!"})
 	})
 
-	// Start the backend server on port 9191
+	// Endpoint to list all submissions
+	http.HandleFunc("/submissions", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		// Handle OPTIONS method for preflight requests
+		if r.Method == http.MethodOptions {
+			return
+		}
+		if r.Method != http.MethodGet {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
+		rows, err := db.Query("SELECT id, name, message FROM submissions ORDER BY id DESC")
+		if err != nil {
+			http.Error(w, "Error fetching data", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var submissions []Submission
+		for rows.Next() {
+			var s Submission
+			if err := rows.Scan(&s.ID, &s.Name, &s.Message); err != nil {
+				http.Error(w, "Error scanning data", http.StatusInternalServerError)
+				return
+			}
+			submissions = append(submissions, s)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(submissions)
+	})
+
 	fmt.Println("Backend running at http://localhost:9191")
 	log.Fatal(http.ListenAndServe(":9191", nil))
 }

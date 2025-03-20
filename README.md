@@ -43,8 +43,9 @@ k port-forward service/go-frontend-app -n go-app 9090:9090
 ```bash
 cd go-backend-app/
 docker build -t ghcr.io/mng-g/go-backend-app:latest .
-cd go-frontend-app/
+cd ../go-frontend-app/
 docker build -t ghcr.io/mng-g/go-frontend-app:latest .
+cd ..
 
 docker network create demo-portfolio-k8s
 
