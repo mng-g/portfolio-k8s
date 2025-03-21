@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -25,39 +26,39 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 }
 
+// getEnv fetches an environment variable or returns a default value.
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
+}
+
 func main() {
 	// Read database configuration from environment variables
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbName := os.Getenv("DB_NAME")
-
-	// Set default values if necessary
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	if dbPort == "" {
-		dbPort = "5432"
-	}
-	if dbUser == "" {
-		dbUser = "postgres"
-	}
-	if dbPass == "" {
-		dbPass = "password"
-	}
-	if dbName == "" {
-		dbName = "mydb"
-	}
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
+	dbUser := getEnv("DB_USER", "postgres")
+	dbPass := getEnv("DB_PASS", "password")
+	dbName := getEnv("DB_NAME", "mydb")
 
 	// Construct the Postgres connection string
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPass, dbName)
 
-	// Connect to the database
-	db, err := sql.Open("postgres", psqlInfo)
+	// Connect to the database with retries
+	var db *sql.DB
+	var err error
+	for i := 0; i < 5; i++ {
+		db, err = sql.Open("postgres", psqlInfo)
+		if err == nil {
+			break
+		}
+		log.Printf("Database connection failed (attempt %d): %v", i+1, err)
+		time.Sleep(2 * time.Second) // Wait before retrying
+	}
 	if err != nil {
-		log.Fatalf("Error connecting to database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
@@ -65,6 +66,8 @@ func main() {
 	if err = db.Ping(); err != nil {
 		log.Fatalf("Unable to reach the database: %v", err)
 	}
+
+	log.Println("Connected to the database successfully.")
 
 	// Create the submissions table if it doesn't exist.
 	createTableSQL := `
@@ -76,18 +79,33 @@ func main() {
 	if _, err := db.Exec(createTableSQL); err != nil {
 		log.Fatalf("Error creating table: %v", err)
 	}
+	log.Println("Table 'submissions' ensured to exist.")
 
 	// Handle preflight requests for CORS
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
-		// This is just a dummy endpoint to confirm the server is running.
+		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 		w.Write([]byte("Backend is running"))
 	})
 
-	// Endpoint to handle new submissions
-	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
+	// Health Check Endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
-		// Handle OPTIONS method for preflight requests
+		log.Println("Health check requested.")
+		if err := db.Ping(); err != nil {
+			http.Error(w, "Database connection error", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// Endpoint to handle new submissions
+	http.HandleFunc("/api/submit", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w)
+		log.Printf("Received submission request: %s", r.Method)
+
+		// Handle OPTIONS method for CORS preflight
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -95,6 +113,7 @@ func main() {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
+
 		// Parse form data
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Error parsing form data", http.StatusBadRequest)
@@ -111,18 +130,21 @@ func main() {
 		insertSQL := "INSERT INTO submissions (name, message) VALUES ($1, $2)"
 		_, err := db.Exec(insertSQL, name, message)
 		if err != nil {
+			log.Printf("Error inserting data: %v", err)
 			http.Error(w, "Error inserting data", http.StatusInternalServerError)
 			return
 		}
 
-		// Return a JSON response
+		log.Printf("New submission: Name=%s, Message=%s", name, message)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "Submission successful!"})
 	})
 
 	// Endpoint to list all submissions
-	http.HandleFunc("/submissions", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/submissions", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
+		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
+
 		// Handle OPTIONS method for preflight requests
 		if r.Method == http.MethodOptions {
 			return
@@ -131,8 +153,10 @@ func main() {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
+
 		rows, err := db.Query("SELECT id, name, message FROM submissions ORDER BY id DESC")
 		if err != nil {
+			log.Printf("Error fetching submissions: %v", err)
 			http.Error(w, "Error fetching data", http.StatusInternalServerError)
 			return
 		}
@@ -147,10 +171,12 @@ func main() {
 			}
 			submissions = append(submissions, s)
 		}
+
+		log.Printf("Fetched %d submissions", len(submissions))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(submissions)
 	})
 
-	fmt.Println("Backend running at http://localhost:9191")
+	log.Println("Backend running at :9191")
 	log.Fatal(http.ListenAndServe(":9191", nil))
 }
