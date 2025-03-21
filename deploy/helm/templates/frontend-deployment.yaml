@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: go-frontend
+  name: go-frontend
+  namespace: go-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-frontend
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: go-frontend
+    spec:
+      containers:
+      - env:
+        - name: BACKEND_URL
+          valueFrom:
+            configMapKeyRef:
+              key: BACKEND_URL
+              name: frontend-config
+        image: ghcr.io/mng-g/go-frontend-app:v0.2.0
+        imagePullPolicy: IfNotPresent
+        name: go-frontend-app
+        resources: {}
+      imagePullSecrets:
+      - name: ghcr-secret

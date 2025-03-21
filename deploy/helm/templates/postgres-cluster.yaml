@@ -1,0 +1,18 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: go-postgres
+  namespace: go-app
+spec:
+  instances: 2
+
+  storage:
+    size: 1Gi
+
+  superuserSecret:
+    name: superuser-secret
+
+  bootstrap:
+    initdb:
+      database: app
+      owner: postgres

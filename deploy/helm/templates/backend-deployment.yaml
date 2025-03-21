@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: go-backend
+  name: go-backend
+  namespace: go-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: go-backend
+    spec:
+      containers:
+      - env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              key: host
+              name: go-postgres-app
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              key: port
+              name: go-postgres-app
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: dbname
+              name: go-postgres-app
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: user
+              name: go-postgres-app
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: go-postgres-app
+        image: ghcr.io/mng-g/go-backend-app:v0.3.1
+        imagePullPolicy: IfNotPresent
+        name: go-backend-app
+        ports:
+        - containerPort: 9191
+          protocol: TCP
+        resources: {}
+      imagePullSecrets:
+      - name: ghcr-secret
