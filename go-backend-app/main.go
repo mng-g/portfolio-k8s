@@ -82,14 +82,14 @@ func main() {
 	log.Println("Table 'submissions' ensured to exist.")
 
 	// Handle preflight requests for CORS
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/ready", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 		w.Write([]byte("Backend is running"))
 	})
 
 	// Health Check Endpoint
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Println("Health check requested.")
 		if err := db.Ping(); err != nil {
