@@ -30,6 +30,12 @@ spec:
         image: ghcr.io/mng-g/go-frontend-app:v0.2.0
         imagePullPolicy: IfNotPresent
         name: go-frontend-app
-        resources: {}
+        resources:
+          limits:
+            cpu: 20m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 25Mi
       imagePullSecrets:
       - name: ghcr-secret

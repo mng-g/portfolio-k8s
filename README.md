@@ -71,7 +71,8 @@ docker run -p 9797:9090 -d ghcr.io/mng-g/go-frontend-app:latest
 ### Get cloudnative-pg operator and create cluster
 ```bash
 kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.25/releases/cnpg-1.25.1.yaml
-k apply -f deploy/helm/templates/postgres-cluster.yaml
+k apply -f deploy/helm/namespace/namespace.yaml
+k apply -f deploy/helm/database/postgres-cluster.yaml
 
 curl -sSfL \
   https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh | \
@@ -80,8 +81,37 @@ curl -sSfL \
 k cnpg status go-postgres -n go-app
 ```
 
-### Deploy on k8s: 
+### Deploy on k8s (after namesapce and database are created): 
 ```bash
 k apply -f deploy/helm/templates
 ```
 
+# Expose on Internet for test
+```bash
+ngrok http --host-header=go-app.local 172.28.100.0:80 --url=becoming-mutt-forcibly.ngrok-free.app --basic-auth="user:password"
+```
+
+## TLS:
+```bash
+#https://tech.aufomm.com/how-to-use-cert-manager-on-kubernetes/
+
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+  --set 'extraArgs={--dns01-recursive-nameservers-only,--dns01-recursive-nameservers=8.8.8.8:53\,1.1.1.1:53}'
+
+cd deploy/helm/certificate/
+# self-signed
+k apply -f selfsigned-cluster-issuer.yaml
+# signed by your internal CA
+openssl req -x509 -new -nodes -keyout ca.key.pem -out ca.cert.pem -days 365 -subj "/CN=MyCA"
+kubectl create secret tls -n cert-manager ca-key-pair --cert=ca.cert.pem --key=ca.key.pem
+
+# set cert-manager.io/cluster-issuer and tls.secretName of self-signed or signed by your internal CA
+k replace -f deploy/helm/templates/ingress.yaml
+
+# NOTE: You have to install the certificate on the system or import it on on the browser DB
+```

@@ -4,4 +4,4 @@ metadata:
   name: frontend-config
   namespace: go-app
 data:
-  BACKEND_URL: "http://go-app.local/api"
+  BACKEND_URL: "https://go-app.local/api"

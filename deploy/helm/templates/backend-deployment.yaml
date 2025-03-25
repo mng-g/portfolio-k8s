@@ -53,6 +53,12 @@ spec:
         ports:
         - containerPort: 9191
           protocol: TCP
-        resources: {}
+        resources:
+          limits:
+            cpu: 20m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 25Mi
       imagePullSecrets:
       - name: ghcr-secret
