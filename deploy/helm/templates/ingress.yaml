@@ -30,3 +30,10 @@ spec:
                 name: go-backend-svc
                 port:
                   number: 9191
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: go-backend-svc
+                port:
+                  number: 9191

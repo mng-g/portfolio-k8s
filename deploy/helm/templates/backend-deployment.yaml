@@ -47,7 +47,7 @@ spec:
             secretKeyRef:
               key: password
               name: go-postgres-app
-        image: ghcr.io/mng-g/go-backend-app:v0.3.1
+        image: ghcr.io/mng-g/go-backend-app:v0.4.0
         imagePullPolicy: IfNotPresent
         name: go-backend-app
         ports:
