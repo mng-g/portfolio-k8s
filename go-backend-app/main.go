@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Submission represents a user submission.
@@ -21,7 +23,7 @@ type Submission struct {
 
 // enableCORS adds the necessary CORS headers.
 func enableCORS(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins; restrict as needed.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 }
@@ -34,8 +36,41 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// Prometheus metrics
+var (
+	httpRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"path", "method"},
+	)
+	httpRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of HTTP requests in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"path", "method"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(httpRequestsTotal, httpRequestDuration)
+}
+
+// instrumentHandler wraps a HTTP handler to record metrics.
+func instrumentHandler(path string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues(path, r.Method))
+		defer timer.ObserveDuration()
+		httpRequestsTotal.WithLabelValues(path, r.Method).Inc()
+		handlerFunc(w, r)
+	}
+}
+
 func main() {
-	// Read database configuration from environment variables
+	// Database configuration
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
 	dbUser := getEnv("DB_USER", "postgres")
@@ -55,7 +90,7 @@ func main() {
 			break
 		}
 		log.Printf("Database connection failed (attempt %d): %v", i+1, err)
-		time.Sleep(2 * time.Second) // Wait before retrying
+		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -66,7 +101,6 @@ func main() {
 	if err = db.Ping(); err != nil {
 		log.Fatalf("Unable to reach the database: %v", err)
 	}
-
 	log.Println("Connected to the database successfully.")
 
 	// Create the submissions table if it doesn't exist.
@@ -81,15 +115,14 @@ func main() {
 	}
 	log.Println("Table 'submissions' ensured to exist.")
 
-	// Handle preflight requests for CORS
-	http.HandleFunc("/api/ready", func(w http.ResponseWriter, r *http.Request) {
+	// Instrumented HTTP handlers
+	http.HandleFunc("/api/ready", instrumentHandler("/api/ready", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 		w.Write([]byte("Backend is running"))
-	})
+	}))
 
-	// Health Check Endpoint
-	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/health", instrumentHandler("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Println("Health check requested.")
 		if err := db.Ping(); err != nil {
@@ -98,14 +131,12 @@ func main() {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
-	})
+	}))
 
-	// Endpoint to handle new submissions
-	http.HandleFunc("/api/submit", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/submit", instrumentHandler("/api/submit", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Printf("Received submission request: %s", r.Method)
 
-		// Handle OPTIONS method for CORS preflight
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -113,8 +144,6 @@ func main() {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-
-		// Parse form data
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Error parsing form data", http.StatusBadRequest)
 			return
@@ -125,8 +154,6 @@ func main() {
 			http.Error(w, "Missing form fields", http.StatusBadRequest)
 			return
 		}
-
-		// Insert the data into the database
 		insertSQL := "INSERT INTO submissions (name, message) VALUES ($1, $2)"
 		_, err := db.Exec(insertSQL, name, message)
 		if err != nil {
@@ -134,18 +161,15 @@ func main() {
 			http.Error(w, "Error inserting data", http.StatusInternalServerError)
 			return
 		}
-
 		log.Printf("New submission: Name=%s, Message=%s", name, message)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "Submission successful!"})
-	})
+	}))
 
-	// Endpoint to list all submissions
-	http.HandleFunc("/api/submissions", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/submissions", instrumentHandler("/api/submissions", func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
 		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 
-		// Handle OPTIONS method for preflight requests
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -153,7 +177,6 @@ func main() {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-
 		rows, err := db.Query("SELECT id, name, message FROM submissions ORDER BY id DESC")
 		if err != nil {
 			log.Printf("Error fetching submissions: %v", err)
@@ -171,11 +194,13 @@ func main() {
 			}
 			submissions = append(submissions, s)
 		}
-
 		log.Printf("Fetched %d submissions", len(submissions))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(submissions)
-	})
+	}))
+
+	// Expose Prometheus metrics endpoint
+	http.Handle("/metrics", promhttp.Handler())
 
 	log.Println("Backend running at :9191")
 	log.Fatal(http.ListenAndServe(":9191", nil))
