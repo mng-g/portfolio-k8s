@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: go-backend-servicemonitor
+  namespace: go-app
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: go-backend
+  endpoints:
+  - port: "http"       # Matches the name of the port in the Service
+    path: /metrics
+    interval: 15s

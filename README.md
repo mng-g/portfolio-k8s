@@ -132,5 +132,22 @@ kubectl --namespace monitoring port-forward $POD_NAME 3000
 # Retrieve the Grafana admin password:​
 kubectl --namespace monitoring get secrets prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo
 
-
+# deploy service monitor
+k apply -f deploy/helm/monitoring/backend-servicemonitor.yaml
 ```
+Add Prometheus as data source on Grafana and create dashboards.
+
+
+## Logging:
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm upgrade --install loki grafana/loki-stack \
+  --namespace logging \
+  --create-namespace \
+  --set loki.enabled=true \
+  --set promtail.enabled=true \
+  --set promtail.config.server.http_listen_port=9080 \
+  --set promtail.config.server.grpc_listen_port=0
+```
+Add Loki as data source on Grafana and create dashboards.

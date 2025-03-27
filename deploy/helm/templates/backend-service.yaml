@@ -1,17 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  creationTimestamp: null
   labels:
     app: go-backend
   name: go-backend-svc
   namespace: go-app
 spec:
   ports:
-  - port: 9191
+  - name: http         # Add a port name here
+    port: 9191
     protocol: TCP
     targetPort: 9191
   selector:
     app: go-backend
-status:
-  loadBalancer: {}
