@@ -1,6 +1,6 @@
 # Portfolio Kubernetes Deployment
 
-This repository contains the necessary configurations and instructions to deploy a portfolio application with frontend and backend components on Kubernetes (K8s). The architecture involves multiple services, including database, application backend, and frontend, all orchestrated on K8s.
+This repository contains the necessary configurations and instructions to deploy a full-stack application on Kubernetes (K8s). The architecture involves multiple services, including database, application backend, and frontend, all orchestrated on K8s.
 
 ## Table of Contents
 - [Build, Tag, and Push Docker Images](#build-tag-and-push-docker-images)
@@ -18,26 +18,28 @@ This repository contains the necessary configurations and instructions to deploy
 
 ## Build, Tag, and Push Docker Images
 
-Before deploying your application on Kubernetes, build and push the Docker images for both the frontend and backend.
+Before deploying your application on Kubernetes, build and push the Docker images for both the frontend and backend. You'll need a GITHUB PAT with *write:packages* access.
 
 ### Frontend
 
 ```bash
 echo "<YOUR_GITHUB_PAT>" | docker login ghcr.io -u mng-g --password-stdin
-docker build -t ghcr.io/mng-g/go-frontend-app:latest .
-docker tag ghcr.io/mng-g/go-frontend-app:latest ghcr.io/mng-g/go-frontend-app:vX.X.X
+docker build -t ghcr.io/mng-g/go-frontend-app:latest ./go-frontend-app
+VERSION=<FRONTEND_VERSION>
+docker tag ghcr.io/mng-g/go-frontend-app:latest ghcr.io/mng-g/go-frontend-app:$VERSION
 docker push ghcr.io/mng-g/go-frontend-app:latest
-docker push ghcr.io/mng-g/go-frontend-app:vX.X.X
+docker push ghcr.io/mng-g/go-frontend-app:$VERSION
 ```
 
 ### Backend
 
 ```bash
 echo "<YOUR_GITHUB_PAT>" | docker login ghcr.io -u mng-g --password-stdin
-docker build -t ghcr.io/mng-g/go-backend-app:latest .
-docker tag ghcr.io/mng-g/go-backend-app:latest ghcr.io/mng-g/go-backend-app:vX.X.X
+docker build -t ghcr.io/mng-g/go-backend-app:latest ./go-backend-app
+VERSION=<BACKEND_VERSION>
+docker tag ghcr.io/mng-g/go-backend-app:latest ghcr.io/mng-g/go-backend-app:$VERSION
 docker push ghcr.io/mng-g/go-backend-app:latest
-docker push ghcr.io/mng-g/go-backend-app:vX.X.X
+docker push ghcr.io/mng-g/go-backend-app:$VERSION
 ```
 
 ---
@@ -64,28 +66,11 @@ kubectl create secret docker-registry ghcr-secret \
   --docker-password=<YOUR_GITHUB_PAT> \
   --docker-email=mingazzini.michael@gmail.com -n go-app
 ```
-
-### Add `imagePullSecrets` to Deployment
-
-Ensure that your deployment configurations reference the secret for pulling images:
-
-```yaml
-imagePullSecrets:
-  - name: ghcr-secret
-```
-
-### Expose Services
-
-Expose the frontend and backend deployments as services:
-
-```bash
-kubectl expose deployment -n go-app go-backend --name go-backend-svc --port 9191
-kubectl expose deployment -n go-app go-frontend --name go-frontend-svc --port 9090
-```
+You'll need a GITHUB PAT with *read:packages* access.
 
 ### Port Forward for Local Testing
 
-To test the services locally, use port forwarding:
+[TEST ONLY] To test the services locally, use port forwarding:
 
 ```bash
 kubectl port-forward service/go-backend-svc -n go-app 9191:9191
@@ -101,11 +86,8 @@ To test the application locally, use the following steps to run the services wit
 1. **Build Docker Images Locally:**
 
    ```bash
-   cd go-backend-app/
-   docker build -t ghcr.io/mng-g/go-backend-app:latest .
-   cd ../go-frontend-app/
-   docker build -t ghcr.io/mng-g/go-frontend-app:latest .
-   cd ..
+   docker build -t ghcr.io/mng-g/go-backend-app:latest ./go-backend-app
+   docker build -t ghcr.io/mng-g/go-frontend-app:latest ./go-frontend-app
    ```
 
 2. **Create a Docker Network:**
@@ -158,16 +140,7 @@ curl -sSfL \
 
 kubectl cnpg status go-postgres -n go-app
 ```
-
----
-
-## Expose on Internet for Test
-
-You can expose your services publicly for testing using [ngrok](https://ngrok.com/):
-
-```bash
-ngrok http --host-header=go-app.local 172.28.100.0:80 --url=becoming-mutt-forcibly.ngrok-free.app --basic-auth="user:password"
-```
+⚠️ If the backend pod isn’t running, check if it detects the created secret. If not, try deleting the pod; if that fails and you're running locally, reboot your machine.
 
 ---
 
@@ -269,3 +242,13 @@ helm upgrade --install loki grafana/loki-stack \
 ```
 
 Add Loki as a data source in Grafana and create dashboards for logs.
+
+---
+
+## Expose on Internet for Test
+
+You can expose your services publicly for testing using [ngrok](https://ngrok.com/):
+
+```bash
+ngrok http --host-header=go-app.local 172.28.100.0:80 --url=becoming-mutt-forcibly.ngrok-free.app --basic-auth="user:password"
+```
