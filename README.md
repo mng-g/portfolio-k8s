@@ -8,7 +8,7 @@ This repository contains the necessary configurations and instructions to deploy
   - [Backend](#backend)
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [Testing Locally](#test-locally)
-- [Cloud-Native PostgreSQL Operator](#get-cloudnative-pg-operator-and-create-cluster)
+- [Create and monitor Cloud-Native PostgreSQL](#create-and-test-CloudNative-PG-Cluster)
 - [Expose Services on the Internet](#expose-on-internet-for-test)
 - [TLS Configuration](#tls)
 - [Monitoring](#monitoring)
@@ -45,6 +45,24 @@ docker push ghcr.io/mng-g/go-backend-app:$VERSION
 ---
 
 ## Kubernetes Deployment
+
+### Set up infrastructure
+
+1. **Set up a cluster**:  
+   ```bash
+   git clone https://github.com/mng-g/devops-ready-cluster.git
+   devops-ready-cluster create-cluster --name <CLUSTER_NAME>
+   ```
+2. **Install required components**:  
+   ```bash
+   devops-ready-cluster install-metrics
+   devops-ready-cluster install-ingress
+   devops-ready-cluster install-metallb
+   devops-ready-cluster install-argocd
+   devops-ready-cluster install-cert-manager
+   devops-ready-cluster install-monitoring
+   devops-ready-cluster install-logging
+   ```
 
 ### Create Deployments
 
@@ -126,39 +144,27 @@ To test the application locally, use the following steps to run the services wit
 
 ---
 
-## Get CloudNative-PG Operator and Create Cluster
+## Create and test CloudNative-PG Cluster
 
-To deploy PostgreSQL using the CloudNative-PG operator, run the following:
+To deploy a PostgreSQL cluster using the CloudNative-PG operator, run the following:
 
 ```bash
-kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.25/releases/cnpg-1.25.1.yaml
 kubectl apply -f deploy/helm/database/postgres-cluster.yaml
 
+# INSTALL THIS PLUGIN TO MONITOR THE CNPG STATUS
 curl -sSfL \
   https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh | \
   sudo sh -s -- -b /usr/local/bin
 
 kubectl cnpg status go-postgres -n go-app
 ```
-⚠️ If the backend pod isn’t running, check if it detects the created secret. If not, try deleting the pod; if that fails and you're running locally, reboot your machine.
+⚠️ If the backend pod isn’t running, check whether it detects the created secret. If it doesn’t, try deleting the pod. If that also fails and you're running locally, reboot your machine as a last resort.
 
 ---
 
 ## TLS
 
 For securing your application with TLS, use [cert-manager](https://cert-manager.io/docs/) to manage certificates.
-
-### Install cert-manager:
-
-```bash
-helm repo add jetstack https://charts.jetstack.io --force-update
-helm install \
-  cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --set crds.enabled=true \
-  --set 'extraArgs={--dns01-recursive-nameservers-only,--dns01-recursive-nameservers=8.8.8.8:53\,1.1.1.1:53}'
-```
 
 ### Generate and Apply Certificates:
 
@@ -185,14 +191,6 @@ helm install \
 ---
 
 ## Monitoring
-
-Install Prometheus and Grafana for monitoring:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
-```
 
 ### Access Dashboards:
 
@@ -249,20 +247,6 @@ You could add other panels like these:
 ---
 
 ## Logging
-
-Set up centralized logging with Grafana Loki:
-
-```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-helm upgrade --install loki grafana/loki-stack \
-  --namespace logging \
-  --create-namespace \
-  --set loki.enabled=true \
-  --set promtail.enabled=true \
-  --set promtail.config.server.http_listen_port=9080 \
-  --set promtail.config.server.grpc_listen_port=0
-```
 
 ### Add Loki as a data source in Grafana and create dashboards for logs.
 
