@@ -9,7 +9,6 @@ This repository contains the necessary configurations and instructions to deploy
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [Testing Locally](#test-locally)
 - [Create and monitor Cloud-Native PostgreSQL](#create-and-test-CloudNative-PG-Cluster)
-- [Expose Services on the Internet](#expose-on-internet-for-test)
 - [TLS Configuration](#tls)
 - [Monitoring](#monitoring)
 - [Logging](#logging)
