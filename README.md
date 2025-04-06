@@ -6,9 +6,10 @@ This repository contains the necessary configurations and instructions to deploy
 - [Build, Tag, and Push Docker Images](#build-tag-and-push-docker-images)
   - [Frontend](#frontend)
   - [Backend](#backend)
-- [Kubernetes Deployment](#kubernetes-deployment)
 - [Testing Locally](#test-locally)
+- [Kubernetes Deployment](#kubernetes-deployment)
 - [Create and monitor Cloud-Native PostgreSQL](#create-and-test-CloudNative-PG-Cluster)
+- [Expose Services on the Internet](#expose-on-internet-for-test)
 - [TLS Configuration](#tls)
 - [Monitoring](#monitoring)
 - [Logging](#logging)
@@ -39,59 +40,6 @@ VERSION=<BACKEND_VERSION>
 docker tag ghcr.io/mng-g/go-backend-app:latest ghcr.io/mng-g/go-backend-app:$VERSION
 docker push ghcr.io/mng-g/go-backend-app:latest
 docker push ghcr.io/mng-g/go-backend-app:$VERSION
-```
-
----
-
-## Kubernetes Deployment
-
-### Set up infrastructure
-
-1. **Set up a cluster**:  
-   ```bash
-   git clone https://github.com/mng-g/devops-ready-cluster.git
-   devops-ready-cluster create-cluster --name <CLUSTER_NAME>
-   ```
-2. **Install required components**:  
-   ```bash
-   devops-ready-cluster install-metrics
-   devops-ready-cluster install-ingress
-   devops-ready-cluster install-metallb
-   devops-ready-cluster install-argocd
-   devops-ready-cluster install-cert-manager
-   devops-ready-cluster install-monitoring
-   devops-ready-cluster install-logging
-   ```
-
-### Create Deployments
-
-Deploy the frontend and backend applications on Kubernetes with the following commands:
-```bash
-kubectl apply -f deploy/helm/namespaces
-kubectl apply -f deploy/helm/templates
-```
-An Ingress will expose the app on [go-app.local](go-app.local). You may need to edit your /etc/hosts file adding the domain and the external IP of the ingress-controller. 
-
-### Set GitHub Container Registry Token
-
-To pull private images, create a Kubernetes secret to store your GitHub token:
-
-```bash
-kubectl create secret docker-registry ghcr-secret \
-  --docker-server=ghcr.io \
-  --docker-username=mng-g \
-  --docker-password=<YOUR_GITHUB_PAT> \
-  --docker-email=mingazzini.michael@gmail.com -n go-app
-```
-You'll need a GITHUB PAT with *read:packages* access.
-
-### Port Forward for Local Testing
-
-[TEST ONLY] To test the services locally, use port forwarding:
-
-```bash
-kubectl port-forward service/go-backend-svc -n go-app 9191:9191
-kubectl port-forward service/go-frontend-svc -n go-app 9090:9090
 ```
 
 ---
@@ -143,14 +91,70 @@ To test the application locally, use the following steps to run the services wit
 
 ---
 
+## Kubernetes Deployment
+
+### Set up infrastructure
+
+1. **Set up a cluster**:  
+   ```bash
+   git clone https://github.com/mng-g/devops-ready-cluster.git
+   devops-ready-cluster create-cluster --name <CLUSTER_NAME>
+   ```
+2. **Install required components**:  
+   ```bash
+   devops-ready-cluster install-metrics
+   devops-ready-cluster install-ingress
+   devops-ready-cluster install-metallb # <= Confirmation will be requested
+   devops-ready-cluster install-database
+   devops-ready-cluster install-cert-manager
+   devops-ready-cluster install-monitoring
+   devops-ready-cluster install-logging
+   ```
+
+### Create Deployments
+
+Deploy the frontend and backend applications on Kubernetes with the following commands:
+```bash
+kubectl apply -f deploy/helm/namespaces
+kubectl apply -f deploy/helm/templates
+```
+An Ingress will expose the app on [go-app.local](go-app.local). You may need to edit your /etc/hosts file adding the domain and the external IP of the ingress-controller. 
+
+### Set GitHub Container Registry Token
+
+To pull private images, create a Kubernetes secret to store your GitHub token:
+
+```bash
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=mng-g \
+  --docker-password=<YOUR_GITHUB_PAT> \
+  --docker-email=mingazzini.michael@gmail.com -n go-app
+```
+You'll need a GITHUB PAT with *read:packages* access.
+
+### Port Forward for Local Testing
+
+[TEST ONLY] To test the services locally, use port forwarding:
+
+```bash
+kubectl port-forward service/go-backend-svc -n go-app 9191:9191
+kubectl port-forward service/go-frontend-svc -n go-app 9090:9090
+```
+
+---
+
 ## Create and test CloudNative-PG Cluster
 
 To deploy a PostgreSQL cluster using the CloudNative-PG operator, run the following:
 
 ```bash
 kubectl apply -f deploy/helm/database/postgres-cluster.yaml
+```
 
-# INSTALL THIS PLUGIN TO MONITOR THE CNPG STATUS
+Install this plugin to monitor the cnpg cluster status:
+
+```bash
 curl -sSfL \
   https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh | \
   sudo sh -s -- -b /usr/local/bin
