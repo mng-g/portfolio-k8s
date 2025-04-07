@@ -149,7 +149,6 @@ kubectl cnpg status go-postgres -n go-app
 
 Deploy the frontend and backend applications on Kubernetes with the following commands:
 ```bash
-kubectl apply -f deploy/helm/namespaces
 kubectl apply -f deploy/helm/templates
 ```
 An Ingress will expose the app on [go-app.local](go-app.local). You may need to edit your /etc/hosts file adding the domain and the external IP of the ingress-controller. 
