@@ -155,7 +155,7 @@ An Ingress will expose the app on [go-app.local](go-app.local). You may need to 
 
 ### Set GitHub Container Registry Token
 
-If the image is private, to pull it, create a Kubernetes secret to store your GitHub token:
+**If the image is private**, to pull it, create a Kubernetes secret to store your GitHub token:
 
 ```bash
 kubectl create secret docker-registry ghcr-secret \
