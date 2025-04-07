@@ -105,6 +105,8 @@ To test the application locally, use the following steps to run the services wit
    devops-ready-cluster install-metrics
    devops-ready-cluster install-ingress
    devops-ready-cluster install-metallb # <= Confirmation will be requested
+   ```
+   ```bash
    devops-ready-cluster install-database
    devops-ready-cluster install-cert-manager
    devops-ready-cluster install-monitoring
