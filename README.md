@@ -222,28 +222,28 @@ kubectl apply -f deploy/helm/monitoring/backend-servicemonitor.yaml
 
 ### Add Prometheus as a data source in Grafana and create dashboards.
 
-On [Prometheus targets](http://localhost:9090/targets) you will see the go-backend ServiceMonitor in the UP state.
-Now you can add Prometheus as a [data source in Grafana](http://localhost:3000/connections/datasources) going to *Connections > Data Sources*
-Then, to create a new dashboard, select the + button on the up right home menu, choose *New Dashboard* and finally *Add visualization*.
+On [Prometheus targets](http://localhost:9090/targets) you will see the go-backend ServiceMonitor in the UP state.  
+Now you can add Prometheus as a [data source in Grafana](http://localhost:3000/connections/datasources) going to *Connections > Data Sources*  
+Then, to create a new dashboard, select the + button on the up right home menu, choose *New Dashboard* and finally *Add visualization*.  
 
-**Data source:** Prometheus
-**Visualization type:** Time Series
-**Panel title:** HTTP Requests per Second
-**Query:** ```sum by (path, method) (rate(http_requests_total[5m]))```
+**Data source:** Prometheus  
+**Visualization type:** Time Series  
+**Panel title:** HTTP Requests per Second  
+**Query:** ```sum by (path, method) (rate(http_requests_total[5m]))```  
 
-Save the dashboard and title it: go-backend-metrics. Now you can try to load the application and see the counter increase.
+Save the dashboard and title it: go-backend-metrics. Now you can try to load the application and see the counter increase.  
 
-You could add other panels like these:
+You could add other panels like these:  
 
-**Data source:** Prometheus
-**Visualization type:** Time Series
-**Panel title:** HTTP Request Duration 95th Percentile (sec)
-**Query:** ```histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path, method))```
+**Data source:** Prometheus  
+**Visualization type:** Time Series  
+**Panel title:** HTTP Request Duration 95th Percentile (sec)  
+**Query:** ```histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path, method))```  
 
-**Data source:** Prometheus
-**Visualization type:** Time Series
-**Panel title:** Average HTTP Request Duration (sec)
-**Query:** ```avg(rate(http_request_duration_seconds_sum[5m])) by (path, method) / avg(rate(http_request_duration_seconds_count[5m])) by (path, method)```
+**Data source:** Prometheus  
+**Visualization type:** Time Series  
+**Panel title:** Average HTTP Request Duration (sec)  
+**Query:** ```avg(rate(http_request_duration_seconds_sum[5m])) by (path, method) / avg(rate(http_request_duration_seconds_count[5m])) by (path, method)```  
 
 ---
 
@@ -251,20 +251,20 @@ You could add other panels like these:
 
 ### Add Loki as a data source in Grafana and create dashboards for logs.
 
-Add Loki as a [data source in Grafana](http://localhost:3000/connections/datasources) going to *Connections > Data Sources*.
-Select Loki and set *http://loki.logging:3100* as URL Connection and click on *Save and Test*.
-⚠️ Sometimes you can see a connection error while you can correctly curl the Loki k8s Service from inside the cluster. 
+Add Loki as a [data source in Grafana](http://localhost:3000/connections/datasources) going to *Connections > Data Sources*.  
+Select Loki and set *http://loki.logging:3100* as URL Connection and click on *Save and Test*.  
+⚠️ Sometimes you can see a connection error while you can correctly curl the Loki k8s Service from inside the cluster.  
 ```bash
 kubectl run curl --rm -i --tty --image=curlimages/curl -- sh
 # curl http://loki.logging:3100/ready
 ```
-If it works, try to go ahead anyway, you should be able to see the logs on the dashboard.
+If it works, try to go ahead anyway, you should be able to see the logs on the dashboard.  
 
-To create a new dashboard, select the + button on the up right home menu, choose *New Dashboard* and finally *Add visualization*.
+To create a new dashboard, select the + button on the up right home menu, choose *New Dashboard* and finally *Add visualization*.  
 
-**Data source:** Loki
-**Visualization type:** Logs
-**Panel title:** go-app Logs
-**Query:** ```{namespace="go-app", pod=~"go-backend.*"}```
+**Data source:** Loki  
+**Visualization type:** Logs  
+**Panel title:** go-app Logs  
+**Query:** ```{namespace="go-app", pod=~"go-backend.*"}```  
 
-Save the dashboard and title it: go-backend-logs.
+Save the dashboard and title it: go-backend-logs.  
