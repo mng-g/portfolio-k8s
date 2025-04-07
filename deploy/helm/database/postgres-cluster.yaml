@@ -9,10 +9,9 @@ spec:
   storage:
     size: 1Gi
 
-  superuserSecret:
-    name: superuser-secret
-
   bootstrap:
     initdb:
       database: app
-      owner: postgres
+      owner: go_app_user
+      secret:
+        name: go-postgres-credentials

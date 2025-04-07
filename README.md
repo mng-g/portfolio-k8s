@@ -8,7 +8,6 @@ This repository contains the necessary configurations and instructions to deploy
   - [Backend](#backend)
 - [Testing Locally](#test-locally)
 - [Kubernetes Deployment](#kubernetes-deployment)
-- [Create and monitor Cloud-Native PostgreSQL](#create-and-test-CloudNative-PG-Cluster)
 - [Expose Services on the Internet](#expose-on-internet-for-test)
 - [TLS Configuration](#tls)
 - [Monitoring](#monitoring)
@@ -113,6 +112,41 @@ To test the application locally, use the following steps to run the services wit
    devops-ready-cluster install-logging
    ```
 
+### Create Namespaces:
+```bash
+kubectl apply -f deploy/helm/namespaces
+```
+
+### Create and test CloudNative-PG Cluster
+
+We need to create a Secret with the credentials that the app will use to connect to the database:
+```bash
+kubectl create secret generic go-postgres-credentials \
+  --from-literal=password='new_password' \
+  --from-literal=username='go_app_user' \
+  --type=kubernetes.io/basic-auth \
+  -n go-app
+```
+
+To deploy a PostgreSQL cluster using the CloudNative-PG operator, run the following:
+
+```bash
+kubectl apply -f deploy/helm/database/postgres-cluster.yaml
+```
+**NOTE:** It is important that the username specified in the Secret matches the username specified in the Cluster manifest.
+
+Install this plugin to monitor the cnpg cluster status:
+
+```bash
+curl -sSfL \
+  https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh | \
+  sudo sh -s -- -b /usr/local/bin
+
+kubectl cnpg status go-postgres -n go-app
+```
+⚠️ If the backend pod isn’t running, check whether it detects the created secret. If it doesn’t, try deleting the pod. If that also fails and you're running locally, reboot your machine as a last resort.
+
+
 ### Create Deployments
 
 Deploy the frontend and backend applications on Kubernetes with the following commands:
@@ -124,7 +158,7 @@ An Ingress will expose the app on [go-app.local](go-app.local). You may need to 
 
 ### Set GitHub Container Registry Token
 
-To pull private images, create a Kubernetes secret to store your GitHub token:
+If the image is private, to pull it, create a Kubernetes secret to store your GitHub token:
 
 ```bash
 kubectl create secret docker-registry ghcr-secret \
@@ -143,27 +177,6 @@ You'll need a GITHUB PAT with *read:packages* access.
 kubectl port-forward service/go-backend-svc -n go-app 9191:9191
 kubectl port-forward service/go-frontend-svc -n go-app 9090:9090
 ```
-
----
-
-## Create and test CloudNative-PG Cluster
-
-To deploy a PostgreSQL cluster using the CloudNative-PG operator, run the following:
-
-```bash
-kubectl apply -f deploy/helm/database/postgres-cluster.yaml
-```
-
-Install this plugin to monitor the cnpg cluster status:
-
-```bash
-curl -sSfL \
-  https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh | \
-  sudo sh -s -- -b /usr/local/bin
-
-kubectl cnpg status go-postgres -n go-app
-```
-⚠️ If the backend pod isn’t running, check whether it detects the created secret. If it doesn’t, try deleting the pod. If that also fails and you're running locally, reboot your machine as a last resort.
 
 ---
 

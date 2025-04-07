@@ -23,30 +23,21 @@ spec:
       containers:
       - env:
         - name: DB_HOST
-          valueFrom:
-            secretKeyRef:
-              key: host
-              name: go-postgres-app
+          value: go-postgres-rw.go-app.svc.cluster.local
         - name: DB_PORT
-          valueFrom:
-            secretKeyRef:
-              key: port
-              name: go-postgres-app
+          value: "5432"
         - name: DB_NAME
-          valueFrom:
-            secretKeyRef:
-              key: dbname
-              name: go-postgres-app
+          value: app
         - name: DB_USER
           valueFrom:
             secretKeyRef:
-              key: user
-              name: go-postgres-app
+              key: username
+              name: go-postgres-credentials
         - name: DB_PASS
           valueFrom:
             secretKeyRef:
               key: password
-              name: go-postgres-app
+              name: go-postgres-credentials
         image: ghcr.io/mng-g/go-backend-app:v0.4.0
         imagePullPolicy: IfNotPresent
         name: go-backend-app
