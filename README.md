@@ -144,8 +144,6 @@ curl -sSfL \
 
 kubectl cnpg status go-postgres -n go-app
 ```
-⚠️ If the backend pod isn’t running, check whether it detects the created secret. If it doesn’t, try deleting the pod. If that also fails and you're running locally, reboot your machine as a last resort.
-
 
 ### Create Deployments
 
