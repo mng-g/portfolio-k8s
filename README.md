@@ -182,27 +182,13 @@ kubectl port-forward service/go-frontend-svc -n go-app 9090:9090
 
 For securing your application with TLS, use [cert-manager](https://cert-manager.io/docs/) to manage certificates.
 
-### Generate and Apply Certificates:
+### Generate and Apply Certificates Signed by Internal CA:
 
-1. **Self-Signed Certificate:**
-
-   ```bash
-   kubectl apply -f deploy/helm/certificate/selfsigned-cluster-issuer.yaml
-   ```
-
-2. **Signed by Internal CA:**
-
-   ```bash
-   openssl req -x509 -new -nodes -keyout deploy/helm/certificate/ca.key.pem -out deploy/helm/certificate/ca.cert.pem -days 365 -subj "/CN=MyCA"
-   kubectl create secret tls -n cert-manager ca-key-pair --cert=deploy/helm/certificate/ca.cert.pem --key=deploy/helm/certificate/ca.key.pem
-   kubectl apply -f deploy/helm/certificate/internal-ca-cluster-issuer.yaml
-   ```
-
-3. **Configure Ingress for TLS:**
-
-   ```bash
-   kubectl replace -f deploy/helm/templates/ingress.yaml
-   ```
+```bash
+openssl req -x509 -new -nodes -keyout deploy/helm/certificate/ca.key.pem -out deploy/helm/certificate/ca.cert.pem -days 365 -subj "/CN=MyCA"
+kubectl create secret tls -n cert-manager ca-key-pair --cert=deploy/helm/certificate/ca.cert.pem --key=deploy/helm/certificate/ca.key.pem
+kubectl apply -f deploy/helm/certificate/internal-ca-cluster-issuer.yaml
+```
 
 ---
 
