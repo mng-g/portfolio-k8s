@@ -231,7 +231,7 @@ Then, to create a new dashboard, select the + button on the up right home menu, 
 **Panel title:** HTTP Requests per Second  
 **Query:** ```sum by (path, method) (rate(http_requests_total[5m]))```  
 
-Save the dashboard and title it: go-backend-metrics. Now you can try to load the application and see the counter increase.  
+Save the dashboard and title it: **go-backend-metrics**. Now you can try to load the application and see the counter increase.  
 
 You could add other panels like these:  
 
@@ -267,4 +267,4 @@ To create a new dashboard, select the + button on the up right home menu, choose
 **Panel title:** go-app Logs  
 **Query:** ```{namespace="go-app", pod=~"go-backend.*"}```  
 
-Save the dashboard and title it: go-backend-logs.  
+Save the dashboard and title it: **go-backend-logs**.  
