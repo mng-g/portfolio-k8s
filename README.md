@@ -180,8 +180,8 @@ For securing your application with TLS, use [cert-manager](https://cert-manager.
 2. **Signed by Internal CA:**
 
    ```bash
-   openssl req -x509 -new -nodes -keyout ca.key.pem -out ca.cert.pem -days 365 -subj "/CN=MyCA"
-   kubectl create secret tls -n cert-manager ca-key-pair --cert=ca.cert.pem --key=ca.key.pem
+   openssl req -x509 -new -nodes -keyout deploy/helm/certificate/ca.key.pem -out deploy/helm/certificate/ca.cert.pem -days 365 -subj "/CN=MyCA"
+   kubectl create secret tls -n cert-manager ca-key-pair --cert=deploy/helm/certificate/ca.cert.pem --key=deploy/helm/certificate/ca.key.pem
    kubectl apply -f deploy/helm/certificate/internal-ca-cluster-issuer.yaml
    ```
 
